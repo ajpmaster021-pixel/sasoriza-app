@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const AUTH_COOKIE = "sasoriza-auth";
+
 export function middleware(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
+  const { pathname } = req.nextUrl;
 
-  if (authHeader?.startsWith("Basic ")) {
-    const base64 = authHeader.slice(6);
-    const decoded = atob(base64);
-    const colonIdx = decoded.indexOf(":");
-    const password = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : "";
-
-    if (process.env.SITE_PASSWORD && password === process.env.SITE_PASSWORD) {
-      return NextResponse.next();
-    }
+  // ログインページ・認証APIは認証不要
+  if (pathname === "/login" || pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
   }
 
-  return new NextResponse("認証が必要です", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Sasoriza App", charset="UTF-8"',
-    },
-  });
+  const token = req.cookies.get(AUTH_COOKIE)?.value;
+  const password = process.env.SITE_PASSWORD;
+
+  if (password && token === password) {
+    return NextResponse.next();
+  }
+
+  // ログインページへリダイレクト
+  const loginUrl = new URL("/login", req.url);
+  if (pathname !== "/") loginUrl.searchParams.set("from", pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
