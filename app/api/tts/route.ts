@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 
+export const runtime = "edge";
+
 // language_code をサポートするモデル
 const LANG_CODE_SUPPORTED_MODELS = new Set([
   "eleven_v3",

@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import { NextRequest } from "next/server";
 
+export const runtime = "edge";
+
 const ZODIAC_INFO: Record<string, { name: string; symbol: string }> = {
   aries:       { name: "おひつじ座", symbol: "♈" },
   taurus:      { name: "おうし座",   symbol: "♉" },
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
       response_format: "b64_json",
     });
 
-    const b64 = response.data[0]?.b64_json;
+    const b64 = response.data?.[0]?.b64_json;
     if (!b64) {
       return Response.json({ error: "画像の生成に失敗しました" }, { status: 500 });
     }
