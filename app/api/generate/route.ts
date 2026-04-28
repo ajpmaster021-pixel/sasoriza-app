@@ -64,10 +64,70 @@ const ZODIAC_INFO: Record<string, { name: string; power: string; symbol: string 
   },
 };
 
+// 日付から毎日変わる占い要素を導出する
+function deriveDailyElements(year: number, month: number, day: number) {
+  // 曜日
+  const weekdays = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+  const weekday = weekdays[new Date(year, month - 1, day).getDay()];
+
+  // 数秘術：月日の数字を全て足して1桁になるまで足す
+  const sumDigits = (n: number): number => n < 10 ? n : sumDigits(Math.floor(n / 10) + (n % 10));
+  const numerology = sumDigits(month + day);
+
+  // 月の満ち欠け（2000年1月6日を新月基準に約29.53日周期で概算）
+  const baseNewMoon = new Date(2000, 0, 6).getTime();
+  const now = new Date(year, month - 1, day).getTime();
+  const daysSince = (now - baseNewMoon) / 86400000;
+  const moonAge = ((daysSince % 29.53) + 29.53) % 29.53;
+  const moonPhase =
+    moonAge < 1.5 ? "新月（新しい始まりの夜）" :
+    moonAge < 7.4 ? "三日月〜上弦（エネルギーが満ちていく時期）" :
+    moonAge < 14.8 ? "上弦〜満月直前（力が最高潮に近づく時）" :
+    moonAge < 15.5 ? "満月（感情と直感が極限まで研ぎ澄まされる夜）" :
+    moonAge < 22.1 ? "満月〜下弦（収穫と手放しの時期）" :
+    moonAge < 28.0 ? "下弦〜新月直前（浄化と内省の時間）" :
+    "晦日の月（次のサイクルへの準備期）";
+
+  // 支配惑星（曜日ベース）
+  const planets = ["太陽（日）", "月", "火星", "水星", "木星", "金星", "土星"];
+  const rulingPlanet = planets[new Date(year, month - 1, day).getDay()];
+
+  // テーマキーワード（日付の日×月を種にローテーション）
+  const themes = [
+    "覚醒と突破", "黄金の扉が開く", "秘密の暴露と解放", "運命的な出会い",
+    "過去の清算と再生", "富と豊穣の流入", "魂の試練と飛躍", "隠れた才能の開花",
+    "縁の結び直し", "宇宙からの緊急メッセージ", "奇跡の連鎖が始まる", "時代の転換点",
+  ];
+  const theme = themes[(day * month) % themes.length];
+
+  // ラッキーカラー
+  const colors = ["深紅", "紺碧", "黄金", "翡翠", "紫紺", "白銀", "漆黒", "珊瑚", "群青", "朱", "藤", "萌黄"];
+  const luckyColor = colors[(day + month * 3) % colors.length];
+
+  // ラッキーアイテム
+  const items = [
+    "水晶のアクセサリー", "新品の財布", "白い封筒", "金色のペン", "赤い糸",
+    "鏡", "丸い石", "ハーブティー", "新しいノート", "香水", "花", "鍵",
+  ];
+  const luckyItem = items[(day + month * 7) % items.length];
+
+  // 注意すべき時間帯
+  const hours = ["午前3時台", "午前9時台", "正午前後", "午後2時台", "午後5時台", "夜9時台", "深夜0時台"];
+  const luckyHour = hours[(day + month) % hours.length];
+
+  return { weekday, numerology, moonPhase, rulingPlanet, theme, luckyColor, luckyItem, luckyHour };
+}
+
 function buildPrompt(signId: string, date: string, targetLength: number): string {
   const info = ZODIAC_INFO[signId];
-  const [year, month, day] = date.split("-");
-  const dateJa = `${year}年${parseInt(month)}月${parseInt(day)}日`;
+  const [yearStr, monthStr, dayStr] = date.split("-");
+  const year = parseInt(yearStr);
+  const month = parseInt(monthStr);
+  const day = parseInt(dayStr);
+  const dateJa = `${year}年${month}月${day}日`;
+
+  const { weekday, numerology, moonPhase, rulingPlanet, theme, luckyColor, luckyItem, luckyHour } =
+    deriveDailyElements(year, month, day);
 
   // 文字数に応じた段落数と1段落の目安文字数を調整
   const paraCount = targetLength <= 1000 ? "3〜4" : targetLength <= 2000 ? "5〜6" : targetLength <= 3000 ? "7〜8" : "9〜10";
@@ -91,18 +151,29 @@ function buildPrompt(signId: string, date: string, targetLength: number): string
 1. 星座への語りかけ・ユリアの自己紹介（その星座特有の「力」に言及）
 2. 日付と今日のエネルギーの描写（大げさかつ詩的に）
 3. 今日のメインテーマと重要な出来事の予言
-4. 詳細な運勢（過去の努力が報われる・秘密が明かされる等）${targetLength >= 2000 ? "\n5. 金運と具体的なアドバイス（「一点突破」「午後の〇〇時」等）" : ""}${targetLength >= 3000 ? "\n6. さらなる深読み・追加の運勢詳細" : ""}${targetLength >= 4000 ? "\n7. 人間関係・仕事運の詳細" : ""}
-${targetLength >= 2000 ? (targetLength >= 3000 ? "8" : "6") : "5"}. 今日やるべき具体的な行動（瞑想・言葉を唱える等）
+4. 詳細な運勢（過去の努力が報われる・秘密が明かされる等）${targetLength >= 2000 ? "\n5. 金運と具体的なアドバイス（ラッキーアワーを必ず言及）" : ""}${targetLength >= 3000 ? "\n6. さらなる深読み・追加の運勢詳細" : ""}${targetLength >= 4000 ? "\n7. 人間関係・仕事運の詳細" : ""}
+${targetLength >= 2000 ? (targetLength >= 3000 ? "8" : "6") : "5"}. 今日やるべき具体的な行動（ラッキーアイテムとラッキーカラーを必ず言及）
 ${targetLength >= 2000 ? (targetLength >= 3000 ? "9" : "7") : "6"}. CTAその1：コメント欄に特定の言葉を書くよう促す
 ${targetLength >= 2000 ? (targetLength >= 3000 ? "10" : "8") : "7"}. CTAその2：チャンネル登録を促す
 ${targetLength >= 2000 ? (targetLength >= 3000 ? "11" : "9") : "8"}. 締めの言葉（「いってらっしゃい」と「また明日」）
 
+【今日（${dateJa}・${weekday}）固有の天体情報 ― これらを必ず台本に織り込むこと】
+- 月の状態：${moonPhase}
+- 支配惑星：${rulingPlanet}
+- 今日の数秘：${numerology}（この数字を台本中に必ず登場させる）
+- 今日のテーマ：「${theme}」（このテーマを中心に据えること）
+- ラッキーカラー：${luckyColor}
+- ラッキーアイテム：${luckyItem}
+- 最強ラッキーアワー：${luckyHour}
+
 【今回の設定】
 - 星座：${info.name}
-- 日付：${dateJa}
+- 日付：${dateJa}（${weekday}）
 - この星座の力：${info.power}
 - シンボル：${info.symbol}
 - 目標文字数：約${targetLength}字（必ずこの文字数に近い長さで書いてください）
+
+重要：上記の天体情報はこの日付にしか当てはまりません。他の日と同じ内容にならないよう、今日固有の要素を全て台本に反映してください。
 
 台本のみを出力してください。説明や前置きは不要です。`;
 }
