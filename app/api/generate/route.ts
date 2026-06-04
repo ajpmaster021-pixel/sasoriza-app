@@ -120,7 +120,7 @@ function deriveDailyElements(year: number, month: number, day: number) {
   return { weekday, numerology, moonPhase, rulingPlanet, theme, luckyColor, luckyItem, luckyHour };
 }
 
-function buildPrompt(signId: string, date: string, targetLength: number): string {
+function buildPrompt(signId: string, date: string, targetLength: number, includeLineCta: boolean): string {
   const info = ZODIAC_INFO[signId];
   const [yearStr, monthStr, dayStr] = date.split("-");
   const year = parseInt(yearStr);
@@ -144,8 +144,7 @@ function buildPrompt(signId: string, date: string, targetLength: number): string
 - 読者を「あなた」と呼び、直接語りかける
 - ユリアが「運命の調律師」として星座の人を導く立場
 - 金運・富・億万長者といったキーワードを多用する
-- コメント欄への書き込みとチャンネル登録を促すCTAを含む
-- 無料鑑定の告知として「概要欄の公式LINEから無料鑑定を受け付けています」という旨のCTAを必ず含む
+- コメント欄への書き込みとチャンネル登録を促すCTAを含む${includeLineCta ? "\n- 無料鑑定の告知として「概要欄の公式LINEから無料鑑定を受け付けています」という旨のCTAを必ず含む" : ""}
 - ${paraCount}段落で構成し、1段落あたり${paraLen}字程度
 - 漢字の読み方を括弧で補足することがある（例：喧騒（けんそう））
 - 「✦」や改行で区切らず、流れるような文体
@@ -157,9 +156,9 @@ function buildPrompt(signId: string, date: string, targetLength: number): string
 4. 詳細な運勢（過去の努力が報われる・秘密が明かされる等）${targetLength >= 2000 ? "\n5. 金運と具体的なアドバイス（ラッキーアワーを必ず言及）" : ""}${targetLength >= 3000 ? "\n6. さらなる深読み・追加の運勢詳細" : ""}${targetLength >= 4000 ? "\n7. 人間関係・仕事運の詳細" : ""}
 ${targetLength >= 2000 ? (targetLength >= 3000 ? "8" : "6") : "5"}. 今日やるべき具体的な行動（ラッキーアイテムとラッキーカラーを必ず言及）
 ${targetLength >= 2000 ? (targetLength >= 3000 ? "9" : "7") : "6"}. CTAその1：コメント欄に特定の言葉を書くよう促す
-${targetLength >= 2000 ? (targetLength >= 3000 ? "10" : "8") : "7"}. CTAその2：チャンネル登録を促す
-${targetLength >= 2000 ? (targetLength >= 3000 ? "11" : "9") : "8"}. CTAその3：無料鑑定の告知（「さらに詳しく知りたい方・個人鑑定を希望する方は、概要欄にある公式LINEからご連絡ください。今なら無料で鑑定しています」という旨を、ユリアらしい情熱的な言葉で伝える）
-${targetLength >= 2000 ? (targetLength >= 3000 ? "12" : "10") : "9"}. 締めの言葉（「いってらっしゃい」と「また明日」）
+${targetLength >= 2000 ? (targetLength >= 3000 ? "10" : "8") : "7"}. CTAその2：チャンネル登録を促す${includeLineCta ? `
+${targetLength >= 2000 ? (targetLength >= 3000 ? "11" : "9") : "8"}. CTAその3：無料鑑定の告知（「さらに詳しく知りたい方・個人鑑定を希望する方は、概要欄にある公式LINEからご連絡ください。今なら無料で鑑定しています」という旨を、ユリアらしい情熱的な言葉で伝える）` : ""}
+${targetLength >= 2000 ? (targetLength >= 3000 ? (includeLineCta ? "12" : "11") : (includeLineCta ? "10" : "9")) : (includeLineCta ? "9" : "8")}. 締めの言葉（「いってらっしゃい」と「また明日」）
 
 【今日（${dateJa}・${weekday}）固有の天体情報 ― これらを必ず台本に織り込むこと】
 - 月の状態：${moonPhase}
@@ -185,7 +184,7 @@ ${targetLength >= 2000 ? (targetLength >= 3000 ? "12" : "10") : "9"}. 締めの�
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sign, date, targetLength = 2000 } = body;
+    const { sign, date, targetLength = 2000, includeLineCta = true } = body;
 
     if (!sign || !date) {
       return Response.json({ error: "星座と日付を指定してください" }, { status: 400 });
@@ -201,7 +200,7 @@ export async function POST(req: NextRequest) {
     }
 
     const client = new Anthropic({ apiKey });
-    const prompt = buildPrompt(sign, date, targetLength);
+    const prompt = buildPrompt(sign, date, targetLength, includeLineCta);
     // 日本語1字≒1.5トークン換算 + プロンプト分の余裕
     const maxTokens = Math.ceil(targetLength * 1.5) + 500;
 

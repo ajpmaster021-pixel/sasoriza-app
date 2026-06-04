@@ -63,6 +63,9 @@ export default function Home() {
   // 台本完了後に自動で音声生成するか
   const [autoGenerateAudio, setAutoGenerateAudio] = useState(false);
 
+  // 無料鑑定・公式LINE誘導CTAを含めるか
+  const [includeLineCta, setIncludeLineCta] = useState(true);
+
   // ボイス管理
   const [savedVoices, setSavedVoices] = useState<SavedVoice[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
@@ -113,7 +116,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sign: selectedSign, date: selectedDate, targetLength }),
+        body: JSON.stringify({ sign: selectedSign, date: selectedDate, targetLength, includeLineCta }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -450,6 +453,28 @@ export default function Home() {
                   <span className="text-xs ml-1.5 opacity-60">{opt.desc}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 無料鑑定・公式LINE誘導トグル */}
+          <div
+            onClick={() => setIncludeLineCta((v) => !v)}
+            className={`flex items-center justify-between px-4 py-3 rounded-xl border cursor-pointer transition-all select-none ${
+              includeLineCta
+                ? "bg-green-900/40 border-green-600"
+                : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+            }`}
+          >
+            <div>
+              <p className={`text-sm font-medium ${includeLineCta ? "text-green-200" : "text-gray-300"}`}>
+                💚 無料鑑定・公式LINE誘導を含める
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {includeLineCta ? "台本に「概要欄の公式LINEから無料鑑定」のCTAを追加します" : "LINE誘導のCTAは含めません"}
+              </p>
+            </div>
+            <div className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${includeLineCta ? "bg-green-600" : "bg-gray-600"}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${includeLineCta ? "translate-x-5" : "translate-x-0.5"}`} />
             </div>
           </div>
 
